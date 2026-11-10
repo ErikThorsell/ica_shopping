@@ -1,13 +1,15 @@
 import logging
-import yaml
 import aiohttp
-import aiofiles
 from .const import API_LIST_ALL, API_ADD_ROW, API_REMOVE_ROW
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+class ICAApiError(Exception):
+    """An ICA call failed; the caller must not treat the result as an empty list."""
+
 
 class ICAApi:
     def __init__(self, hass, session_id, entry_id=None):
@@ -79,39 +81,41 @@ class ICAApi:
             return None
 
 
-    async def fetch_lists(self):
+    async def fetch_lists_strict(self):
+        """Return all lists, or raise ICAApiError. Never returns [] for a failure."""
         token = await self._get_token_from_session_id()
         if not token:
-            _LOGGER.error("❌ Avbryter fetch_lists - token saknas")
-            return []
+            raise ICAApiError("no valid ICA token (session expired?)")
 
         headers = {
             "Authorization": f"Bearer {token}",
             "Accept": "application/json",
-            "Cookie": f"thSessionId={self.session_id}"
+            "Cookie": f"thSessionId={self.session_id}",
         }
-
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(API_LIST_ALL, headers=headers) as resp:
-                    _LOGGER.debug("📡 ICA API status: %s", resp.status)
+                    _LOGGER.debug("ICA list/all status: %s", resp.status)
                     if resp.status != 200:
-                        _LOGGER.error("❗ ICA API error: %s", resp.status)
-                        return []
-
+                        raise ICAApiError(f"list/all returned HTTP {resp.status}")
                     result = await resp.json()
-                    _LOGGER.debug("📦 ICA API raw response: %s", result)
+        except ICAApiError:
+            raise
+        except Exception as err:
+            raise ICAApiError(f"list/all failed: {err}") from err
 
-                    # Returnera rätt beroende på format
-                    if isinstance(result, dict) and "items" in result:
-                        return result["items"]
-                    elif isinstance(result, list):
-                        return result
-                    else:
-                        _LOGGER.error("❗ Oväntat format på ICA-response: %s", type(result))
-                        return []
-        except Exception as e:
-            _LOGGER.error("❗ Fel vid hämtning av ICA-listor: %s", e)
+        if isinstance(result, dict) and isinstance(result.get("items"), list):
+            return result["items"]
+        if isinstance(result, list):
+            return result
+        raise ICAApiError(f"unexpected list/all payload: {type(result).__name__}")
+
+    async def fetch_lists(self):
+        """Lenient variant for sensors: [] on any failure."""
+        try:
+            return await self.fetch_lists_strict()
+        except ICAApiError as err:
+            _LOGGER.error("Could not fetch ICA lists: %s", err)
             return []
 
     async def get_list_name(self, list_id: str) -> str:
