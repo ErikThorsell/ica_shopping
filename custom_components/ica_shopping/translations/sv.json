@@ -26,6 +26,14 @@
           }
         }
       }
+    },
+    "list_missing": {
+      "title": "ICA-inköpslistan hittades inte",
+      "description": "Listan {list_id} finns inte längre på ditt ICA-konto. Synkningen är pausad och inget ändras. Välj den aktuella listan i integrationens alternativ."
+    },
+    "sync_aborted": {
+      "title": "ICA-synkningen stoppades för att skydda listorna",
+      "description": "En synkning skulle ha tagit bort {count} varor på en gång (gränsen är {limit}), så inget ändrades. Kontrollera båda listorna och kör sedan tjänsten ica_shopping.refresh med force aktiverat om borttagningarna stämmer."
     }
   },
   "remove_striked_both": {

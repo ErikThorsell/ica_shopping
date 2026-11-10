@@ -26,6 +26,14 @@
           }
         }
       }
+    },
+    "list_missing": {
+      "title": "ICA shopping list not found",
+      "description": "The list {list_id} is no longer on your ICA account, so syncing is paused and nothing is changed. Select the current list in the integration options."
+    },
+    "sync_aborted": {
+      "title": "ICA sync stopped to protect your lists",
+      "description": "One sync would have removed {count} items at once (the limit is {limit}), so nothing was changed. Check both lists, then run the service ica_shopping.refresh with force enabled if the removals are correct."
     }
   },
   "remove_striked_both": {

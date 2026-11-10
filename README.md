@@ -1,22 +1,44 @@
 # 🛒 ICA Shopping – Home Assistant Integration
 
-Sync your ICA shopping lists with Home Assistant and your shopping/todo list in HA.
+Keeps one ICA shopping list and one Home Assistant to-do list in sync, in both directions.
+Link the to-do list to Apple Reminders (Companion app → Reminders Sync) or to voice
+assistants and the same items reach your ICA list.
 
-This also works with Google Keep, which means you can add items to your shopping list
-using Google Assistant (voice) and have them automatically synced to your ICA shopping list
+## How syncing works
 
-## Limitations at the Moment
+The integration remembers which items were present on both sides after the previous run.
+That memory is what separates "new on this side" from "removed on the other side":
 
-**Polling Interval (Google Keep):**  
-While changes made in Home Assistant are instantly reflected in Google Keep, the reverse is not immediate.  
-The integration polls Google Keep for updates every 15 minutes.  
-Changes made directly in Google Keep will appear in Home Assistant after the next polling cycle.
-[Read more about the limitations here.](https://github.com/watkins-matt/home-assistant-google-keep-sync?tab=readme-ov-file#limitations)
+| situation | result |
+|---|---|
+| item is new in Home Assistant | added to ICA |
+| item is new on ICA | added to the to-do list |
+| item is removed or completed in Home Assistant | removed from ICA |
+| item is ticked off or removed on ICA | removed from the to-do list |
+| item exists on only one side and was never synced | never deleted; it is copied across |
 
-**ICA API:**  
-Changes made to your ICA shopping list (e.g. via the ICA app or website) will **not** appear immediately in Home Assistant.  
-The integration does **not** support real-time updates, so you’ll need to manually trigger a refresh to fetch the latest version of the list.
+Items match on their text, ignoring case and extra spaces. `Milk` and `milk ` are one item;
+if the to-do list holds both, the first one is kept and the other is removed.
 
+With **Remove checked and completed items** on (default), ticked ICA rows and completed
+to-do items are cleaned up after they have been synced.
+
+**When it runs:** every 10 minutes (ICA does not push changes), 5 seconds after the to-do
+list changes, and whenever you call the `ica_shopping.refresh` service.
+
+**First run:** the two lists are merged, so everything on either side ends up on both.
+Tidy the ICA list first if it holds old items you do not want in your to-do list.
+
+**Safety:**
+- If ICA or the to-do entity cannot be read, nothing is changed.
+- If the configured ICA list no longer exists, syncing pauses and a repair is shown.
+- A single run never removes more than 15 items. If it would, nothing is changed and a repair is
+  shown; check both lists, then call `ica_shopping.refresh` with `force: true`.
+- Changing the ICA list or the to-do entity in the options starts from a clean slate instead of
+  treating the old list's items as removed.
+
+Item text is sent to ICA exactly as written. ICA assigns a store group to free text, so
+English words generally land in the same group as the Swedish ones.
 
 ## Installation via HACS
 
@@ -34,7 +56,7 @@ Go to Settings -> Devices & Services.
 Click Add Integration.
 Search for and select Ica Shopping.
 5. Enter your `session_id` and `ica_list_id` which you want to add.
-6. (Optional) Link a `todo` entity to sync with Google Keep.
+6. Choose the `todo` entity to sync with.
 Submit
 
 ## How to Get Your `session_id`
@@ -59,7 +81,7 @@ NOTE: this is only valid for ~3 months which you then need to update
 7. Copy its value and paste into the integration config.
 
 The url looks like this:
-https://apimgw-pub.ica.se/sverige/digx/shopping-list/v1/api/row/ab95586e-ffd3-4927-bfc7-85d1c5193dbb
+https://apim-pub.gw.ica.se/sverige/digx/shopping-list/v1/api/row/ab95586e-ffd3-4927-bfc7-85d1c5193dbb
 with 'ab95586e-ffd3-4927-bfc7-85d1c5193dbb' being your list_id
 
 

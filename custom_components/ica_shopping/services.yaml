@@ -1,9 +1,11 @@
-add_item:
-  description: "Add item to ICA shopping list"
+refresh:
+  name: Refresh
+  description: Sync the ICA list with the linked to-do list now.
   fields:
-    list_id:
-      description: "ID of the shopping list"
-      example: "97c9c669-91fd-4b08-84de-de14314d44ge"
-    text:
-      description: "Item text to add, e.g. 'kaffe'"
-      example: "kaffe"
+    force:
+      name: Force
+      description: Apply the sync even if it would remove many items at once.
+      required: false
+      default: false
+      selector:
+        boolean:
