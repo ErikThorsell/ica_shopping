@@ -8,12 +8,15 @@ missing or unreadable, nothing is changed.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
+from datetime import datetime
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .ica_api import ICAApi, ICAApiError
@@ -24,6 +27,8 @@ _LOGGER = logging.getLogger(__name__)
 STORAGE_VERSION = 1
 MAX_ICA_ITEMS = 250
 MAX_REMOVALS = 15
+SESSION_WARN_DAYS = 75  # the ICA cookie lasts about 90 days; warn with ~2 weeks left
+SESSION_EVENT = "ica_shopping_session_expiring"
 
 
 class ListSync:
@@ -32,6 +37,7 @@ class ListSync:
         self.entry = entry
         self.api = api
         self._store: Store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.pairs.{entry.entry_id}")
+        self._session_store: Store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.session.{entry.entry_id}")
         self._lock = asyncio.Lock()
         self.busy = False
         self.last_finished: float = 0.0
@@ -131,7 +137,37 @@ class ListSync:
             for r in the_list.get("rows", []) if isinstance(r, dict) and r.get("id")
         ]
 
+    async def _check_session_age(self) -> None:
+        """Warn before the ICA cookie expires.
+
+        ICA does not report when the cookie ends, so the age is counted from the day
+        this cookie was first seen. A new cookie (different digest) restarts the count.
+        """
+        session_id = self.entry.options.get("session_id", self.entry.data.get("session_id", ""))
+        digest = hashlib.sha256(session_id.encode()).hexdigest()[:16]
+        now = dt_util.utcnow()
+        data = await self._session_store.async_load() or {}
+        if data.get("digest") != digest:
+            data = {"digest": digest, "since": now.isoformat()}
+            await self._session_store.async_save(data)
+        age = (now - datetime.fromisoformat(data["since"])).days
+        issue = f"session_expiring_{self.entry.entry_id}"
+        if age < SESSION_WARN_DAYS:
+            ir.async_delete_issue(self.hass, DOMAIN, issue)
+            return
+        if ir.async_get(self.hass).async_get_issue(DOMAIN, issue) is None:
+            self.hass.bus.async_fire(SESSION_EVENT, {"entry_id": self.entry.entry_id, "age_days": age})
+        ir.async_create_issue(
+            self.hass, DOMAIN, issue, is_fixable=True, severity=ir.IssueSeverity.WARNING,
+            translation_key="session_expiring", translation_placeholders={"days": str(age)},
+            data={"entry_id": self.entry.entry_id},
+        )
+
     async def _run(self, force: bool) -> bool:
+        try:
+            await self._check_session_age()
+        except Exception:  # advisory only; never block the sync
+            _LOGGER.exception("Could not check the age of the ICA session")
         ica_rows = await self._fetch_ica()
         if ica_rows is None:
             return False

@@ -67,7 +67,21 @@ Submit
 4. Find the cookie called `thSessionId`.
 5. Copy its value and paste into the integration config.
 
-NOTE: this is only valid for ~3 months which you then need to update
+The cookie is valid for about 3 months. ICA does not report when it ends, so the integration counts from the day it first saw the cookie. After 75 days it raises a repair ("ICA session expires soon") and fires the event `ica_shopping_session_expiring` once. Click Fix to paste a new value; the count then starts again. If the cookie expires anyway, the existing "Session ID is invalid" repair appears and syncing pauses without changing any list.
+
+To get a push notification on your phone, use an automation:
+
+```yaml
+alias: ICA session expiring
+triggers:
+  - trigger: event
+    event_type: ica_shopping_session_expiring
+actions:
+  - action: notify.mobile_app_YOUR_PHONE
+    data:
+      title: ICA Shopping
+      message: Renew the ICA cookie (thSessionId) in Settings → Repairs.
+```
 
 
 ## How to Get Your `ica_list_id`

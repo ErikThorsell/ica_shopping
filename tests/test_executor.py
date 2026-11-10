@@ -252,3 +252,55 @@ async def test_changing_the_ica_list_does_not_delete_ha_items(hass, env):
     await refresh(hass)
     assert await ha_open(hass) == ["milk"]
     assert fake.texts() == ["milk"]
+
+
+# --- session age warning ---
+
+from datetime import timedelta
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import async_capture_events
+
+from custom_components.ica_shopping.sync import SESSION_EVENT
+
+
+def _issue(hass, entry):
+    return ir.async_get(hass).async_get_issue(DOMAIN, f"session_expiring_{entry.entry_id}")
+
+
+async def _age_cookie(hass, entry, days):
+    from homeassistant.helpers.storage import Store
+    import hashlib
+    digest = hashlib.sha256(entry.data["session_id"].encode()).hexdigest()[:16]
+    await Store(hass, 1, f"{DOMAIN}.session.{entry.entry_id}").async_save(
+        {"digest": digest, "since": (dt_util.utcnow() - timedelta(days=days)).isoformat()})
+
+
+async def test_fresh_cookie_raises_nothing(hass, env):
+    fake, entry = env
+    await start(hass, entry)
+    await refresh(hass)
+    assert _issue(hass, entry) is None
+
+
+async def test_old_cookie_raises_one_repair_and_one_event(hass, env):
+    fake, entry = env
+    await _age_cookie(hass, entry, 80)
+    events = async_capture_events(hass, SESSION_EVENT)
+    await start(hass, entry)
+    await refresh(hass)
+    await refresh(hass)
+    issue = _issue(hass, entry)
+    assert issue is not None and issue.is_fixable
+    assert len(events) == 1 and events[0].data["age_days"] == 80
+
+
+async def test_new_cookie_restarts_the_count(hass, env):
+    fake, entry = env
+    await _age_cookie(hass, entry, 80)
+    await start(hass, entry)
+    await refresh(hass)
+    assert _issue(hass, entry) is not None
+    hass.config_entries.async_update_entry(entry, options={"session_id": "fresh"})
+    await hass.async_block_till_done()
+    await refresh(hass)
+    assert _issue(hass, entry) is None

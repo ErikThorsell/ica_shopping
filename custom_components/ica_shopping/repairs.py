@@ -48,6 +48,6 @@ async def async_create_fix_flow(
     data: dict[str, str] | None,
 ) -> RepairsFlow:
     """Create the fix flow for an ICA Shopping issue."""
-    if issue_id == "invalid_session_id" and data and data.get("entry_id"):
+    if issue_id.startswith(("invalid_session_id", "session_expiring")) and data and data.get("entry_id"):
         return InvalidSessionIdRepairFlow()
     return ConfirmRepairFlow()
