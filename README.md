@@ -4,6 +4,8 @@ Keeps one ICA shopping list and one Home Assistant to-do list in sync, in both d
 Link the to-do list to Apple Reminders (Companion app → Reminders Sync) or to voice
 assistants and the same items reach your ICA list.
 
+Forked from [mellamomax/ica_shopping](https://github.com/mellamomax/ica_shopping), which provided the ICA API client and the config flow. Licensed under MIT; see `LICENSE`.
+
 ## How syncing works
 
 The integration remembers which items were present on both sides after the previous run.
