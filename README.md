@@ -40,6 +40,19 @@ Tidy the ICA list first if it holds old items you do not want in your to-do list
 Item text is sent to ICA exactly as written. ICA assigns a store group to free text, so
 English words generally land in the same group as the Swedish ones.
 
+### Log
+
+Each run that changes anything logs one line, for example
+`ICA sync: to ICA +1 -0, to HA +2 -1, purged 1 completed, 0 failed (before: HA 12 items, ICA 11 rows)`.
+Runs that change nothing log the same line at debug level. Home Assistant shows only warnings
+by default, so to see these lines add:
+
+```yaml
+logger:
+  logs:
+    custom_components.ica_shopping: info
+```
+
 ## Installation via HACS
 
 Add Custom Repository:

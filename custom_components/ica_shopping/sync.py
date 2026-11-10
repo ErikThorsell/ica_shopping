@@ -206,8 +206,24 @@ class ListSync:
             results.append((a, await self._apply(a)))
 
         await self._save_pairs(next_pairs(p, results))
+        self._log_summary(ha_items, ica_rows, results)
         await self._refresh_sensor()
         return True
+
+    def _log_summary(self, ha_items, ica_rows, results: list[tuple[Action, bool]]) -> None:
+        """One line per run: INFO when something changed or failed, DEBUG when nothing did."""
+        done = {k: sum(1 for a, ok in results if ok and a.kind == k) for k in
+                ("add_ica", "add_ha", "remove_ica", "remove_ha", "purge_ha")}
+        failed = sum(1 for _, ok in results if not ok)
+        msg = (
+            "ICA sync: to ICA +%d -%d, to HA +%d -%d, purged %d completed, %d failed "
+            "(before: HA %d items, ICA %d rows)"
+        )
+        args = (
+            done["add_ica"], done["remove_ica"], done["add_ha"], done["remove_ha"],
+            done["purge_ha"], failed, len(ha_items), len(ica_rows),
+        )
+        _LOGGER.log(logging.INFO if results else logging.DEBUG, msg, *args)
 
     async def _apply(self, a: Action) -> bool:
         try:

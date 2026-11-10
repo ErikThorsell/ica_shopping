@@ -1,7 +1,7 @@
 {
   "domain": "ica_shopping",
   "name": "ICA Shopping",
-  "version": "9.1.0",
+  "version": "9.2.0",
   "documentation": "https://github.com/ErikThorsell/ica_shopping",
   "issue_tracker": "https://github.com/ErikThorsell/ica_shopping/issues",
   "requirements": [

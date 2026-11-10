@@ -304,3 +304,31 @@ async def test_new_cookie_restarts_the_count(hass, env):
     await hass.async_block_till_done()
     await refresh(hass)
     assert _issue(hass, entry) is None
+
+
+# --- log summary ---
+
+async def test_summary_line_counts_changes(hass, env, caplog):
+    import logging
+    caplog.set_level(logging.DEBUG, logger="custom_components.ica_shopping")
+    fake, entry = env
+    fake.rows = [{"id": "r0", "text": "bröd", "isStriked": False}]; fake.n = 1
+    await ha_add(hass, "milk")
+    await start(hass, entry)
+    await refresh(hass)
+    lines = [r for r in caplog.records if r.getMessage().startswith("ICA sync: to ICA")]
+    assert any("to ICA +1 -0, to HA +1 -0, purged 0 completed, 0 failed" in r.getMessage()
+               and r.levelno == logging.INFO for r in lines)
+
+
+async def test_noop_run_logs_at_debug_only(hass, env, caplog):
+    import logging
+    caplog.set_level(logging.DEBUG, logger="custom_components.ica_shopping")
+    fake, entry = env
+    await ha_add(hass, "milk")
+    await start(hass, entry)
+    await refresh(hass)
+    caplog.clear()
+    await refresh(hass)
+    lines = [r for r in caplog.records if r.getMessage().startswith("ICA sync: to ICA")]
+    assert lines and all(r.levelno == logging.DEBUG for r in lines)
