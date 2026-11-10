@@ -1,4 +1,5 @@
 import logging
+from homeassistant.core import callback
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.event import async_call_later
 from .const import DOMAIN, DATA_ICA
@@ -98,6 +99,7 @@ async def async_setup_entry(hass, entry):
         except Exception as e:
             _LOGGER.error("💥 Fel vid sync_keep_to_ica: %s", e)
 
+    @callback
     def call_service_listener(event):
         nonlocal debounce_unsub
         data = event.data.get("service_data", {})
