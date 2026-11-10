@@ -134,7 +134,7 @@ class ICAApi:
             _LOGGER.error("❌ Kan inte radera – token saknas")
             return False
 
-        url = f"https://apimgw-pub.ica.se/sverige/digx/shopping-list/v1/api/row/{row_id}"
+        url = f"https://apim-pub.gw.ica.se/sverige/digx/shopping-list/v1/api/row/{row_id}"
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json; charset=UTF-8",
@@ -161,7 +161,7 @@ class ICAApi:
             _LOGGER.error("❌ Saknar token – kan inte lägga till i ICA")
             return False
 
-        url = f"https://apimgw-pub.ica.se/sverige/digx/shopping-list/v1/api/list/{list_id}/row"
+        url = f"https://apim-pub.gw.ica.se/sverige/digx/shopping-list/v1/api/list/{list_id}/row"
 
         headers = {
             "Authorization": f"Bearer {token}",
